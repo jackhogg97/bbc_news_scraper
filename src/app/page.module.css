@@ -228,3 +228,24 @@
     transform: rotate(0deg);
   }
 }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table tr,
+.table td {
+  border: 1px solid #ddd;
+  width: 50%;
+  padding: 8px;
+  text-align: left;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  background-color: #FFF;
+  color: black;
+}
+
+.table a {
+  color: #0000FF;
+}
