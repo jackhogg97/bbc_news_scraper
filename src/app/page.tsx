@@ -1,14 +1,8 @@
-import { readFile } from "fs/promises";
 import styles from "./page.module.css";
-
-type HeadlineURL = {
-  title: string,
-  url: string,
-}
+import { sql } from "@vercel/postgres";
 
 export default async function Home() {
-  const data = await readFile("links.json", "utf8");
-  const links: HeadlineURL[] = JSON.parse(data);
+  const { rows } = await sql`SELECT * from news_links`;
 
   return (
     <main className={styles.main}>
@@ -20,7 +14,7 @@ export default async function Home() {
           </tr>
         </thead>
         <tbody>
-          {links.map((item) => (
+          {rows.map((item) => (
             <tr key={0}>
               <td>{item.title}</td>
               <td><a href={item.url}>{item.url}</a></td>
