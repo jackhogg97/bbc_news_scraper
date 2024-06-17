@@ -1,14 +1,21 @@
 from bs4 import BeautifulSoup, ResultSet, Tag
 import requests
 import re
-import json
+import psycopg2
+from dotenv import load_dotenv
+import os
 
 
 # TODO: what to do about duplicates
 
 
-def get_news_tags(host: str, path: str) -> list[dict]:
-    with requests.get(f"{host}{path}") as response:
+load_dotenv(".env.development.local")
+
+
+def get_news_tags(host: str, path: str) -> list[dict[str, str]]:
+    url = f"{host}{path}"
+    print(url)
+    with requests.get(url) as response:
         html = BeautifulSoup(response.text, "html.parser")
         a_tags: ResultSet[Tag] = html.find_all("a", href=True)
 
@@ -16,18 +23,19 @@ def get_news_tags(host: str, path: str) -> list[dict]:
         for tag in a_tags:
             path = str(tag.get("href"))
             if re.search(r"/news/articles/.+", path) != None:
-                res.append(
-                    {
-                        "title": str(tag.text),
-                        "path": path,
-                        "url": f"{host}{path}",
-                    }
-                )
+                res.append({"title": str(tag.text), "path": path, "url": url})
 
         return res
 
 
-news_tags: list[dict] = []
+connection = psycopg2.connect(
+    database=os.environ["POSTGRES_DATABASE"],
+    user=os.environ["POSTGRES_USER"],
+    password=os.environ["POSTGRES_PASSWORD"],
+    host=os.environ["POSTGRES_HOST"],
+)
+
+news_tags: list[dict[str, str]] = []
 host = "https://www.bbc.co.uk"
 path = "/news"
 
@@ -37,7 +45,17 @@ while len(news_tags) < 1000:
     path = news_tags[index].get("path")
     index += 1
 
-
-# TODO: use db
-with open("links.json", "w") as f:
-    json.dump(news_tags, f, indent=2)
+with connection.cursor() as curs:
+    curs.execute(
+        """
+            CREATE TABLE IF NOT EXISTS news_links (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                path TEXT NOT NULL,
+                url TEXT NOT NULL
+            );
+        """
+    )
+    insert_query = "INSERT INTO news_links (title, path, url) VALUES (%(title)s, %(path)s, %(url)s);"
+    curs.executemany(insert_query, news_tags)
+    connection.commit()
